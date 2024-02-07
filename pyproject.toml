@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "okta-expression-parser"
+version = "0.1.0"
+description = "Returns a boolean by passing Okta profile data to an Okta Expression using Okta Expression Language"
+authors = ["Mathew Moon <me@mathewmoon.net>"]
+readme = "README.md"
+packages = [{include = "okta_expression_parser", from = "."}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+sly = "^0.5"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "7.4.3"
+
+[tool.pytest.ini_options]
+xfail_strict = true
+
+[build-system]
+requires = ["poetry-core>=1.7.0"]
+build-backend = "poetry.core.masonry.api"
