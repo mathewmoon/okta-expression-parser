@@ -38,7 +38,7 @@ class ExpressionLexer(Lexer):
 
     AND = r"and|And|AND"
     NE = r"(!=|ne|NE|Ne)"
-    NOT = "!"
+    NOT = r"!|not|Not|NOT"
     GTE = ">="
     GT = ">"
     LT = "<"
