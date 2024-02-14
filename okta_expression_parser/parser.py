@@ -9,6 +9,7 @@ import sly
 from sly.yacc import YaccProduction
 
 from . import expression_classes as _default_expression_classes
+from .expression_classes.arrays import _ArrayType
 from .lexer import ExpressionLexer
 
 
@@ -35,9 +36,22 @@ class ExpressionParser(sly.Parser):
         log_to_stdout: bool = False,
         log_level: str = "INFO",
         expression_classes: ModuleType = _default_expression_classes,
+        group_data: dict = {},
     ) -> None:
         #: A module containing classes used in expressions, such as `Arrays` or `String`
         self._expression_classes = expression_classes
+
+        # Required for doing translations between group ID's and other group attributes.
+        # Without passing group_data into the parser all `Group` methods will return empty
+        if (
+            group_data
+            and hasattr(self._expression_classes, "Groups")
+            and type(self._expression_classes.Groups) == type
+        ):
+            self._expression_classes.Groups.group_data = group_data
+
+        self.group_data = group_data
+
         self.__group_ids: str = group_ids
         self.__user_profile: str = user_profile
         self.logger: logging.Logger = logging.getLogger()
@@ -124,14 +138,20 @@ class ExpressionParser(sly.Parser):
         operand0 = p.operand0
         operand1 = p.operand1
 
-        if isinstance(operand0, list) and isinstance(operand1, list):
+        # if not isinstance(operand0, tuple):
+        #    return (operand0, operand1)
+        #
+        # else:
+        #    return operand0 + (operand1,)
+
+        if isinstance(operand0, tuple) and isinstance(operand1, tuple):
             res = operand0 + operand1
-        elif isinstance(operand0, list) and not isinstance(operand1, list):
-            res = operand0 + [operand1]
-        elif not isinstance(operand0, list) and isinstance(operand1, list):
-            res = [operand0] + operand1       
+        elif isinstance(operand0, tuple) and not isinstance(operand1, tuple):
+            res = operand0 + (operand1,)
+        elif not isinstance(operand0, tuple) and isinstance(operand1, tuple):
+            res = (operand0,) + operand1
         else:
-            res = [operand0, operand1]
+            res = (operand0, operand1)
         return res
 
     @_("NULL")
@@ -147,13 +167,25 @@ class ExpressionParser(sly.Parser):
         val = p.BOOL.lower()
         return val == "true"
 
-    @_('array')
+    @_("array")
     def operand(self, p: YaccProduction) -> List[Any]:
-        return p.array
+        return _ArrayType(p.array)
 
     @_('"{" operand "}"')
     def array(self, p: YaccProduction) -> List[Any]:
-        return [p.operand]
+        if isinstance(p.operand, Sequence):
+            return _ArrayType(p.operand)
+
+        return _ArrayType([p.operand])
+
+    @_('array "," operand')
+    def operand(self, p: YaccProduction) -> List[Any]:
+        # if isinstance(p.operand, tuple):
+
+        if isinstance(p.operand, tuple):
+            return (p.array,) + p.operand
+
+        return (p.array, p.operand)
 
     @_("STRING")  # noqa: 821
     def operand(self, p: YaccProduction) -> str:  # noqa: 811
@@ -170,7 +202,6 @@ class ExpressionParser(sly.Parser):
     @_("USER")
     def path(self, _) -> Dict[str, Any]:
         return self.__user_profile
-
 
     @_("NAME")  # noqa: 821
     def path(self, p: YaccProduction) -> Any:  # noqa: 811
@@ -225,10 +256,11 @@ class ExpressionParser(sly.Parser):
         else:
             val = p.path
 
-        if not isinstance(val, list):
-            val = [val]
+        if isinstance(val, tuple):
+            res = method(*val)
 
-        res = method(*val)
+        else:
+            res = method(val)
 
         return res
 
@@ -243,13 +275,13 @@ class ExpressionParser(sly.Parser):
         else:
             val = p.path
 
-        if not isinstance(val, list):
-            val = [val]
+        if isinstance(val, tuple):
+            res = method(*val)
 
-        res = method(*val)
+        else:
+            res = method(val)
 
         return res
-
 
     @_('MEMBEROFANY "(" operand ")"')
     def condition(self, p: YaccProduction):

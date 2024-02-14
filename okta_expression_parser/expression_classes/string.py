@@ -5,7 +5,9 @@ class String:
     @classmethod
     def stringContains(cls, str_to_test: str, val: str):
         """Tests if a string contains another string"""
-        res = isinstance(str_to_test, str) and isinstance(val, str) and val in str_to_test
+        res = (
+            isinstance(str_to_test, str) and isinstance(val, str) and val in str_to_test
+        )
         return res
 
     @classmethod

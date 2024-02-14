@@ -51,7 +51,7 @@ class ExpressionLexer(Lexer):
     USER = r"user\b"
 
     NULL = r"null|NULL|Null"
-    CLASS = r"String|Arrays"
+    CLASS = r"String|Arrays|Convert|Iso3166Convert|Groups"
     INT = r"\d+"
     STRING = r""""([^"\\]*(\\.[^"\\]*)*)"|\'([^\'\\]*(\\.[^\'\\]*)*)\'|''|\"\""""
     NAME = r"[a-zA-Z_][a-zA-Z0-9\-_]*"
