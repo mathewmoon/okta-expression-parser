@@ -2,7 +2,7 @@
 import logging
 from os import environ
 from sys import stdout
-from typing import Any, Callable, Dict, List, Sequence
+from typing import Any, Dict, List, Sequence
 from types import ModuleType
 
 import sly
@@ -110,32 +110,29 @@ class ExpressionParser(sly.Parser):
         condition = p.condition
         return not condition
 
-    @_("NOT path")  # noqa: 821
+    @_("NOT operand")  # noqa: 821
     def condition(self, p: YaccProduction) -> bool:  # noqa: 811
-        return not p.path
+        return not p.operand
 
     @_('"(" condition ")"')  # noqa: 821
     def condition(self, p: YaccProduction) -> bool:  # noqa: 811
         condition = p.condition
         return condition
 
-    @_('arg_list "," operand')  # noqa: 821
-    def arg_list(self, p: YaccProduction) -> List[Any]:  # noqa: 811
-        arg_list = p.arg_list
-        operand = p.operand
-        return [*arg_list, operand]
-
-    @_('operand "," arg_list')  # noqa: 821
-    def arg_list(self, p: YaccProduction) -> List[Any]:  # noqa: 811
-        arg_list = p.arg_list
-        operand = p.operand
-        return [operand, *arg_list]
-
     @_('operand "," operand')  # noqa: 821
-    def arg_list(self, p: YaccProduction) -> List[Any]:  # noqa: 811
+    def operand(self, p: YaccProduction) -> List[Any]:  # noqa: 811
         operand0 = p.operand0
         operand1 = p.operand1
-        return [operand0, operand1]
+
+        if isinstance(operand0, list) and isinstance(operand1, list):
+            res = operand0 + operand1
+        elif isinstance(operand0, list) and not isinstance(operand1, list):
+            res = operand0 + [operand1]
+        elif not isinstance(operand0, list) and isinstance(operand1, list):
+            res = [operand0] + operand1       
+        else:
+            res = [operand0, operand1]
+        return res
 
     @_("NULL")
     def operand(self, p: YaccProduction) -> None:
@@ -150,13 +147,12 @@ class ExpressionParser(sly.Parser):
         val = p.BOOL.lower()
         return val == "true"
 
-    @_('"{" arg_list "}"')
-    def array(self, p: YaccProduction) -> List[Any]:
-        return p.arg_list
+    @_('array')
+    def operand(self, p: YaccProduction) -> List[Any]:
+        return p.array
 
     @_('"{" operand "}"')
     def array(self, p: YaccProduction) -> List[Any]:
-        print("array - operand")
         return [p.operand]
 
     @_("STRING")  # noqa: 821
@@ -175,8 +171,18 @@ class ExpressionParser(sly.Parser):
     def path(self, _) -> Dict[str, Any]:
         return self.__user_profile
 
-    @_('path "." NAME')  # noqa: 821
+
+    @_("NAME")  # noqa: 821
     def path(self, p: YaccProduction) -> Any:  # noqa: 811
+        NAME = p.NAME
+
+        if not hasattr(p, "path"):
+            path = {}
+
+        return path.get(NAME) if path is not None else None
+
+    @_('path "." NAME')  # noqa: 821
+    def operand(self, p: YaccProduction) -> Any:  # noqa: 811
         path = p.path
         NAME = p.NAME
 
@@ -190,19 +196,10 @@ class ExpressionParser(sly.Parser):
 
         return res
 
-    @_("NAME")  # noqa: 821
-    def path(self, p: YaccProduction) -> Any:  # noqa: 811
-        NAME = p.NAME
-        if not hasattr(p, "path"):
-            path = {}
-
-        return path.get(NAME) if path is not None else None
-
     @_("cls")
-    def condition(self, p: YaccProduction) -> Any:
+    def operand(self, p: YaccProduction) -> Any:
         """
-        Returns the result of the call to a class method called from
-        `self._expression_classes`
+        Returns a class from `self._expression_classes`
         """
         return p.cls
 
@@ -217,58 +214,44 @@ class ExpressionParser(sly.Parser):
                 f"Class {p.CLASS} has not been implemented in the parser"
             )
 
-    @_('cls "." NAME')
-    def cls(self, p: YaccProduction) -> Callable:
-        """Returns a callable from `cls`, which is a class from `self._expression_classes`"""
+    @_('cls "." NAME "(" operand ")"')
+    @_('cls "." NAME "(" path ")"')
+    def operand(self, p: YaccProduction) -> Any:
+        """Calls a method from `cls`, which is a class from `self._expression_classes`"""
         method = getattr(p.cls, p.NAME)
-        return method
 
-    @_('path "," operand')
-    def path_value_args(self, p: YaccProduction) -> List[Any]:
-        """Appends and operand to list to be passed as arguments to a tokenized method"""
-        path = p.path
-        val = p.operand
-        return [path, val]
-
-    @_('array "," operand')
-    def array_value_args(self, p: YaccProduction) -> List[Any]:
-        """
-        Defines a method signature consisting of an array token as the first argument
-        and a discrete operand token as the second
-        """
-        return [p.array, p.operand]
-
-    @_('cls "(" path_value_args ")"')
-    @_('cls "(" array_value_args ")"')
-    def cls(self, p: YaccProduction) -> Any:
-        """
-        Executes and returns the value from a callable defined in a token as `cls.NAME`,
-        passing a list or an array of args
-        """
-        method = p.cls
-
-        if hasattr(p, "path_value_args"):
-            args = p.path_value_args
+        if hasattr(p, "operand"):
+            val = p.operand
         else:
-            args = p.array_value_args
-        res = method(*args)
+            val = p.path
+
+        if not isinstance(val, list):
+            val = [val]
+
+        res = method(*val)
+
         return res
 
-    @_('cls "(" operand ")"')
-    def cls(self, p: YaccProduction) -> Any:
-        """
-        Executes and returns the value from a callable defined in a token as `cls.NAME`,
-        passing a single arg
-        """
-        method = p.cls
-        if isinstance(p.operand, list):
-            res = method(*p.operand)
+    @_('cls "." NAME "(" operand ")"')
+    @_('cls "." NAME "(" path ")"')
+    def condition(self, p: YaccProduction) -> bool:
+        """Calls a method from `cls`, which is a class from `self._expression_classes`"""
+        method = getattr(p.cls, p.NAME)
+
+        if hasattr(p, "operand"):
+            val = p.operand
         else:
-            res = method(p.operand)
+            val = p.path
+
+        if not isinstance(val, list):
+            val = [val]
+
+        res = method(*val)
+
         return res
+
 
     @_('MEMBEROFANY "(" operand ")"')
-    @_('MEMBEROFANY "(" arg_list ")"')
     def condition(self, p: YaccProduction):
         """
         Tests if a user is a member of one or many groups
@@ -276,12 +259,13 @@ class ExpressionParser(sly.Parser):
         if not self.__group_ids:
             return False
 
-        if not hasattr(p, "arg_list"):
-            res = p.operand in self.__group_ids
-        else:
-            arg_list = p.arg_list
-            res = bool(list(set(self.__group_ids) & set(arg_list)))
-        return res
+        val = p.operand
+        if not isinstance(val, list):
+            val = [val]
+
+        res = list(set(self.__group_ids) & set(val))
+
+        return bool(res)
 
     @_('MEMBEROF "(" operand ")"')
     def condition(self, p: YaccProduction):

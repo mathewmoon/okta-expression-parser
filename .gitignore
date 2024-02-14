@@ -12,6 +12,7 @@ graph.svg
 graph.gif
 debug.txt
 tempfiles
+test.py
 
 # Distribution / packaging
 .Python
