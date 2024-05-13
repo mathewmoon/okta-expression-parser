@@ -87,12 +87,18 @@ class String:
         return default
 
     @classmethod
-    def substring(val: str, start: int, end: int):
+    def substring(self, val: str, start: int, end: int):
         """Return a substring of val starting at index start"""
+        if not isinstance(val, str):
+            return ""
+
+        if end > len(val):
+            end = -1
+
         return val[int(start) : int(end)]
 
     @classmethod
-    def substringAfter(val: str, search: str):
+    def substringAfter(self, val: str, search: str):
         try:
             start = str(val).index(str(search))
         except ValueError:
@@ -101,7 +107,7 @@ class String:
         return val[start:]
 
     @classmethod
-    def substringBefore(val: str, search: str):
+    def substringBefore(self, val: str, search: str):
         """Return substring of val starting after the index of search string"""
         try:
             end = str(val).index(str(search))
