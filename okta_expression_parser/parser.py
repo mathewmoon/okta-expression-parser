@@ -292,7 +292,8 @@ class ExpressionParser(sly.Parser):
             return False
 
         val = p.operand
-        if not isinstance(val, list):
+
+        if not isinstance(val, tuple):
             val = [val]
 
         res = list(set(self.__group_ids) & set(val))
@@ -306,7 +307,6 @@ class ExpressionParser(sly.Parser):
         if not self.__group_ids:
             return False
 
-        # return p.operand.lower() in self.__group_ids
         return p.operand in self.__group_ids
 
     @_("condition error")  # noqa: 821
