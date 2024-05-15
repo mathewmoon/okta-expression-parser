@@ -64,12 +64,10 @@ class ExpressionParser(sly.Parser):
         return super().parse(ExpressionLexer().tokenize(expression))
 
     @_("operand")  # noqa: 821
-    def return_val(self, p: YaccProduction) -> Any:  # noqa: 811
-        return p.operand
-
     @_("condition")  # noqa: 821
-    def return_val(self, p: YaccProduction) -> Any:  # noqa: 811
-        return p.condition
+    def result(self, p: YaccProduction) -> bool:  # noqa: 811
+        res = p.condition if hasattr(p, "condition") else p.operand
+        return res
 
     @_("operand EQ operand")  # noqa: 821
     def condition(self, p: YaccProduction) -> bool:
@@ -114,17 +112,39 @@ class ExpressionParser(sly.Parser):
         operand1 = p.operand1
         return type(operand0) == type(operand1) and operand0 > operand1
 
+    @_('"(" condition ")"')  # noqa: 821
+    def condition(self, p: YaccProduction) -> bool:  # noqa: 811
+        return p.condition
+
+    @_('"(" operand ")"')  # noqa: 821
+    def operand(self, p: YaccProduction) -> bool:  # noqa: 811
+        return p.operand
+
     @_("condition AND condition")  # noqa: 821
     def condition(self, p: YaccProduction) -> bool:  # noqa: 811
-        condition0 = p.condition0
-        condition1 = p.condition1
-        return condition0 and condition1
+        return p.condition0 and p.condition1
+
+    @_("operand AND operand")  # noqa: 821
+    def condition(self, p: YaccProduction) -> bool:  # noqa: 811
+        return p.operand0 and p.operand1
+
+    @_("operand AND condition")  # noqa: 821
+    @_("condition AND operand")  # noqa: 821
+    def condition(self, p: YaccProduction) -> bool:  # noqa: 811
+        return p.condition and p.operand
 
     @_("condition OR condition")  # noqa: 821
     def condition(self, p: YaccProduction) -> bool:  # noqa: 811
-        condition0 = p.condition0
-        condition1 = p.condition1
-        return condition0 or condition1
+        return p.condition0 or p.condition1
+
+    @_("operand OR operand")  # noqa: 821
+    def condition(self, p: YaccProduction) -> bool:  # noqa: 811
+        return p.operand0 or p.operand1
+
+    @_("operand OR condition")  # noqa: 821
+    @_("condition OR operand")  # noqa: 821
+    def condition(self, p: YaccProduction) -> bool:  # noqa: 811
+        return p.condition or p.operand
 
     @_("NOT condition")  # noqa: 821
     def condition(self, p: YaccProduction) -> bool:  # noqa: 811
@@ -134,12 +154,6 @@ class ExpressionParser(sly.Parser):
     @_("NOT operand")  # noqa: 821
     def condition(self, p: YaccProduction) -> bool:  # noqa: 811
         return not p.operand
-
-    @_('"(" operand ")"')  # noqa: 821
-    @_('"(" condition ")"')  # noqa: 821
-    def condition(self, p: YaccProduction) -> bool:  # noqa: 811
-        condition = p.condition if hasattr(p, "condition") else p.operand
-        return condition
 
     @_('operand "," operand')  # noqa: 821
     def operand(self, p: YaccProduction) -> List[Any]:  # noqa: 811
@@ -311,21 +325,25 @@ class ExpressionParser(sly.Parser):
 
         return p.operand in self.__group_ids
 
-    @_("turnary")  # noqa: 821
-    def operand(self, p: YaccProduction) -> Any:
-        condition = p.turnary[0]
-        if_true = p.turnary[1]
-        if_false = p.turnary[2]
-        if condition:
-            return if_true
-        else:
-            return if_false
+    #@_("turnary")  # noqa: 821
+    #def operand(self, p: YaccProduction) -> Any:
+    #    condition = p.turnary[0]
+    #    if_true = p.turnary[1]
+    #    if_false = p.turnary[2]
+    #    if condition:
+    #        return if_true
+    #    else:
+    #        return if_false
 
     @_("operand QUESTION_MARK operand COLON operand")  # noqa: 821
     @_("condition QUESTION_MARK operand COLON operand")  # noqa: 821
-    def turnary(self, p: YaccProduction) -> Any:  # noqa: 811
+    def operand(self, p: YaccProduction) -> Any:  # noqa: 811
         condition = p.condition if hasattr(p, "condition") else p.operand0
-        return (condition, p.operand0, p.operand1)
+        if_true = p.operand0 if hasattr(p, "condition") else p.operand1
+        if_false = p.operand1 if hasattr(p, "condition") else p.operand2
+
+        return if_true if condition else if_false
+        #return (condition, p.operand0, p.operand1)
 
     @_("condition error")  # noqa: 821
     def operand(self, x):  # noqa: 811
