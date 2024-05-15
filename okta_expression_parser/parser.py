@@ -14,9 +14,8 @@ from .lexer import ExpressionLexer
 
 
 class ExpressionParser(sly.Parser):
-    if debug_file := environ.get("OKTA_EXPRESSION_PARSER_LOG_FILE"):
-        #: Writes grammar rules to a file for debugging
-        debugfile: str = environ.get(debug_file)
+    #: Writes grammar rules to a file for debugging
+    debugfile = environ.get("OKTA_EXPRESSION_PARSER_LOG_FILE")
 
     #: Gets the token list from the lexer (required)
     tokens: Sequence = ExpressionLexer.tokens
@@ -63,6 +62,14 @@ class ExpressionParser(sly.Parser):
 
     def parse(self, expression: str):
         return super().parse(ExpressionLexer().tokenize(expression))
+
+    @_("operand")  # noqa: 821
+    def return_val(self, p: YaccProduction) -> Any:  # noqa: 811
+        return p.operand
+
+    @_("condition")  # noqa: 821
+    def return_val(self, p: YaccProduction) -> Any:  # noqa: 811
+        return p.condition
 
     @_("operand EQ operand")  # noqa: 821
     def condition(self, p: YaccProduction) -> bool:
@@ -128,21 +135,16 @@ class ExpressionParser(sly.Parser):
     def condition(self, p: YaccProduction) -> bool:  # noqa: 811
         return not p.operand
 
+    @_('"(" operand ")"')  # noqa: 821
     @_('"(" condition ")"')  # noqa: 821
     def condition(self, p: YaccProduction) -> bool:  # noqa: 811
-        condition = p.condition
+        condition = p.condition if hasattr(p, "condition") else p.operand
         return condition
 
     @_('operand "," operand')  # noqa: 821
     def operand(self, p: YaccProduction) -> List[Any]:  # noqa: 811
         operand0 = p.operand0
         operand1 = p.operand1
-
-        # if not isinstance(operand0, tuple):
-        #    return (operand0, operand1)
-        #
-        # else:
-        #    return operand0 + (operand1,)
 
         if isinstance(operand0, tuple) and isinstance(operand1, tuple):
             res = operand0 + operand1
@@ -308,6 +310,22 @@ class ExpressionParser(sly.Parser):
             return False
 
         return p.operand in self.__group_ids
+
+    @_("turnary")  # noqa: 821
+    def operand(self, p: YaccProduction) -> Any:
+        condition = p.turnary[0]
+        if_true = p.turnary[1]
+        if_false = p.turnary[2]
+        if condition:
+            return if_true
+        else:
+            return if_false
+
+    @_("operand QUESTION_MARK operand COLON operand")  # noqa: 821
+    @_("condition QUESTION_MARK operand COLON operand")  # noqa: 821
+    def turnary(self, p: YaccProduction) -> Any:  # noqa: 811
+        condition = p.condition if hasattr(p, "condition") else p.operand0
+        return (condition, p.operand0, p.operand1)
 
     @_("condition error")  # noqa: 821
     def operand(self, x):  # noqa: 811

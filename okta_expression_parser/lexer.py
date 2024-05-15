@@ -24,6 +24,8 @@ class ExpressionLexer(Lexer):
         NOT,
         NULL,
         BOOL,
+        COLON,
+        QUESTION_MARK,
         MEMBEROF,
         MEMBEROFANY,
         USER,
@@ -49,6 +51,8 @@ class ExpressionLexer(Lexer):
     MEMBEROFANY = "isMemberOfAnyGroup"
     MEMBEROF = "isMemberOfGroup"
     USER = r"user\b"
+    COLON = r"\:"
+    QUESTION_MARK = r"\?"
 
     NULL = r"null|NULL|Null"
     CLASS = r"String|Arrays|Convert|Iso3166Convert|Groups"
