@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "okta-expression-parser"
-version = "0.3.0"
+version = "0.4.0"
 description = "Returns a boolean by passing Okta profile data to an Okta Expression using Okta Expression Language"
 authors = ["Mathew Moon <me@mathewmoon.net>"]
 readme = "README.md"

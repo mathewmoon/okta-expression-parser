@@ -10,9 +10,9 @@ class ExpressionLexer(Lexer):
     # reflags = re.IGNORECASE
     # Set of token names.
     tokens = {
+        NAME,
         STRING,
         INT,
-        NAME,
         NE,
         GTE,
         LTE,
@@ -28,6 +28,10 @@ class ExpressionLexer(Lexer):
         QUESTION_MARK,
         MEMBEROF,
         MEMBEROFANY,
+        MEMBEROFNAME,
+        MEMBEROFGROUPSTARTSWITH,
+        MEMBEROFGROUPCONTAINS,
+        MEMBEROFGROUPNAMEREGEX,
         USER,
         CLASS,
     }
@@ -48,7 +52,11 @@ class ExpressionLexer(Lexer):
     OR = r"or|OR|Or"
     EQ = r"(==|eq|EQ|Eq)"
     BOOL = r"(true|false|True|False|TRUE|FALSE)"
+    MEMBEROFGROUPCONTAINS = "isMemberOfGroupNameContains"
+    MEMBEROFGROUPNAMEREGEX = "isMemberOfGroupNameRegex"
+    MEMBEROFGROUPSTARTSWITH = "isMemberOfGroupNameStartsWith"
     MEMBEROFANY = "isMemberOfAnyGroup"
+    MEMBEROFNAME = "isMemberOfGroupName"
     MEMBEROF = "isMemberOfGroup"
     USER = r"user\b"
     COLON = r"\:"
@@ -57,7 +65,8 @@ class ExpressionLexer(Lexer):
     NULL = r"null|NULL|Null"
     CLASS = r"String|Arrays|Convert|Iso3166Convert|Groups"
     INT = r"\d+"
-    STRING = r""""([^"\\]*(\\.[^"\\]*)*)"|\'([^\'\\]*(\\.[^\'\\]*)*)\'|''|\"\""""
+    #    STRING = r""""([^"\\]*(\\.[^"\\]*)*)"|\'([^\'\\]*(\\.[^\'\\]*)*)\'|''|\"\""""
+    STRING = r'''"(?:\\.|[^"\\])*"'''
     NAME = r"[a-zA-Z_][a-zA-Z0-9\-_]*"
 
     # Line number tracking

@@ -1,6 +1,7 @@
 # pyright: reportUndefinedVariable=false
 import logging
 from os import environ
+from re import match
 from sys import stdout
 from typing import Any, Dict, List, Sequence
 from types import ModuleType
@@ -49,6 +50,7 @@ class ExpressionParser(sly.Parser):
         ):
             self._expression_classes.Groups.group_data = group_data
 
+        #: A dict, with Group ID's as the keys and group data as the values. Used for operations that require more context than just the group ID.
         self.group_data = group_data
 
         self.__group_ids: str = group_ids
@@ -325,15 +327,47 @@ class ExpressionParser(sly.Parser):
 
         return p.operand in self.__group_ids
 
-    #@_("turnary")  # noqa: 821
-    #def operand(self, p: YaccProduction) -> Any:
-    #    condition = p.turnary[0]
-    #    if_true = p.turnary[1]
-    #    if_false = p.turnary[2]
-    #    if condition:
-    #        return if_true
-    #    else:
-    #        return if_false
+    @_('MEMBEROFNAME "(" operand ")"')
+    def condition(self, p: YaccProduction):
+        """Tests if a user is a member of a group with a specific name"""
+
+        matches = [
+            v for k, v in self.group_data.items() if v["profile"]["name"] == p.operand
+        ]
+
+        return bool(matches)
+
+    @_('MEMBEROFGROUPSTARTSWITH "(" operand ")"')
+    def condition(self, p: YaccProduction):
+        """Tests if a user is a member of a group with a specific name"""
+
+        matches = [
+            v
+            for k, v in self.group_data.items()
+            if v["profile"]["name"].startswith(p.operand)
+        ]
+
+        return bool(matches)
+
+    @_('MEMBEROFGROUPCONTAINS "(" operand ")"')
+    def condition(self, p: YaccProduction):
+        """Tests if a user is a member of a group with a specific name"""
+
+        matches = [
+            v for k, v in self.group_data.items() if p.operand in v["profile"]["name"]
+        ]
+
+        return bool(matches)
+
+    @_('MEMBEROFGROUPNAMEREGEX "(" operand ")"')
+    def condition(self, p: YaccProduction):
+        """Tests if a user is a member of a group with a specific name"""
+
+        for _, group in self.group_data.items():
+            if match(p.operand, group["profile"]["name"]):
+                return True
+
+        return False
 
     @_("operand QUESTION_MARK operand COLON operand")  # noqa: 821
     @_("condition QUESTION_MARK operand COLON operand")  # noqa: 821
@@ -343,7 +377,6 @@ class ExpressionParser(sly.Parser):
         if_false = p.operand1 if hasattr(p, "condition") else p.operand2
 
         return if_true if condition else if_false
-        #return (condition, p.operand0, p.operand1)
 
     @_("condition error")  # noqa: 821
     def operand(self, x):  # noqa: 811
