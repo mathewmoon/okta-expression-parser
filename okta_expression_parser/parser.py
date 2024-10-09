@@ -14,6 +14,19 @@ from .expression_classes.arrays import _ArrayType
 from .lexer import ExpressionLexer
 
 
+# Sly doesn't really facilitate configuring logging from the caller, so we're going to
+# suppress all logging below the level specified in the LOG_LEVEL environment variable.
+log_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL", "EXCEPTION"]
+
+log_level = environ.get("LOG_LEVEL", "ERROR")
+
+log_rank = log_levels.index(log_level)
+
+for level_name in list(reversed(log_levels))[:log_rank +1]:
+    log_attr = level_name.lower()
+    setattr(sly.yacc.SlyLogger, log_attr, lambda self, msg, *args, **kwargs: None)
+
+
 class ExpressionParser(sly.Parser):
     #: Writes grammar rules to a file for debugging
     debugfile = environ.get("OKTA_EXPRESSION_PARSER_LOG_FILE")
@@ -34,7 +47,7 @@ class ExpressionParser(sly.Parser):
         group_ids: List[str] = [],
         user_profile: Dict[str, Any] = {},
         log_to_stdout: bool = False,
-        log_level: str = "INFO",
+        log_level: str = environ.get("LOG_LEVEL", "ERROR"),
         expression_classes: ModuleType = _default_expression_classes,
         group_data: dict = {},
     ) -> None:
