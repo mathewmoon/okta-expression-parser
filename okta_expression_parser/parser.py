@@ -22,7 +22,7 @@ log_level = environ.get("LOG_LEVEL", "ERROR")
 
 log_rank = log_levels.index(log_level)
 
-for level_name in list(reversed(log_levels))[:log_rank +1]:
+for level_name in list(reversed(log_levels))[: log_rank + 1]:
     log_attr = level_name.lower()
     setattr(sly.yacc.SlyLogger, log_attr, lambda self, msg, *args, **kwargs: None)
 

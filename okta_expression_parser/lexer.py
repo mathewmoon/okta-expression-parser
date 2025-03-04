@@ -42,14 +42,14 @@ class ExpressionLexer(Lexer):
     # String containing ignored characters
     ignore = " \t"
 
-    AND = r"and|And|AND"
+    AND = r"and|And|AND|&&"
     NE = r"(!=|ne|NE|Ne)"
     NOT = r"!|not|Not|NOT"
     GTE = ">="
     GT = ">"
     LT = "<"
     LTE = "<="
-    OR = r"or|OR|Or"
+    OR = r"or|OR|Or|\|\|"
     EQ = r"(==|eq|EQ|Eq)"
     BOOL = r"(true|false|True|False|TRUE|FALSE)"
     MEMBEROFGROUPCONTAINS = "isMemberOfGroupNameContains"
